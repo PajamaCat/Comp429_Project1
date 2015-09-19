@@ -93,9 +93,6 @@ int main(int argc, char **argv) {
     struct timeval time_out;
     int select_retval;
     
-    /* a silly message */
-    char *message = "Welcome to Ping-Pong!\n";
-    
     /* number of bytes sent/received */
     int count;
     
@@ -108,7 +105,7 @@ int main(int argc, char **argv) {
     int BUF_LEN = 65535;
     
     /* size of msg received */
-    short msg_size;
+    unsigned short msg_size;
 
     
     buf = (char *)malloc(BUF_LEN);
@@ -293,8 +290,9 @@ int main(int argc, char **argv) {
                         close(current->socket);
                         dump(&head, current->socket);
                     } else {
-                        msg_size = buf[0];
+                        memcpy(&msg_size, buf, 2);
                         count = send(current->socket, buf, msg_size, MSG_DONTWAIT);
+                        printf("msg_size from the first 2 bytes: %hu \n", msg_size);
                         printf("Send2: %d\n.", count);
                         
                         if (count < 0) {
