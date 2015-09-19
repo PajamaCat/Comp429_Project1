@@ -38,7 +38,8 @@ int main(int argc, char** argv) {
     unsigned short server_port = atoi (argv[2]);
     
     /* The size in bytes of each message to send (10 <= size <= 65,535) */
-    int msg_size = atoi(argv[3]);
+    unsigned short msg_size = atoi(argv[3]);
+    printf("1: %d, 2: %hu\n", atoi(argv[3]), msg_size);
     
     /* The number of message exchanges to perform (1 <= count <= 10,000)*/
     int msg_count = atoi(argv[4]);
@@ -92,8 +93,10 @@ int main(int argc, char** argv) {
         abort();
     }
     
-    
-    sendbuffer[0] = msg_size;
+    memcpy(sendbuffer, &msg_size, 2);
+//    sendbuffer[0] = msg_size;
+//    
+//    printf("sendbuffer %hu\n", (unsigned short)sendbuffer[0]);
     int i;
     for (i = 10; i < msg_size; i++) {
         sendbuffer[i] = 'x';
@@ -101,20 +104,33 @@ int main(int argc, char** argv) {
     
     while (msg_count > 0) {
         gettimeofday(&start, NULL);
-        sendbuffer[2] = start.tv_sec;
-        sendbuffer[6] = start.tv_usec;
+		
+        unsigned int start_sec = (unsigned int)start.tv_sec;
+        unsigned int start_usec = (unsigned int)start.tv_usec;
+        
+        memcpy(sendbuffer+2, &start_sec, 4);
+        memcpy(sendbuffer+6, &start_usec, 4);
         
         long temp;
         
         temp = send(sock, sendbuffer, msg_size, 0);
-        printf("Sent: %lu\n.", temp);
+        
+        unsigned short holder;
+        memcpy(&holder, sendbuffer, 2);
+        printf("Sent: %lu.\n", temp);
+        printf("time %hu\n", (unsigned short)holder);
 
         /* everything looks good, since we are expecting a
          message from the server in this example, let's try receiving a
          message from the socket. this call will block until some data
          has been received */
-    
-        if (recv(sock, buffer, msg_size, 0) < 0)
+    	
+        temp = recv(sock, buffer, msg_size, 0);
+        memcpy(&holder, buffer, 2);
+        printf("Buff[0] %hu\n", (unsigned short)holder);
+        printf("Recv: %lu.\n", temp);
+
+        if (temp < 0)
         {
             perror("receive failure");
             abort();
@@ -122,6 +138,7 @@ int main(int argc, char** argv) {
 
         
         gettimeofday(&end, NULL);
+        
         time_diff = (end.tv_sec-start.tv_sec) * 1000000 + (end.tv_usec-start.tv_usec);
         printf("Latency for %d bytes message is %lu us \n", msg_size, time_diff);
         
@@ -136,13 +153,7 @@ int main(int argc, char** argv) {
     return 0;
 
 }
-    
-    
-    
-    
-    
-    
-    
+
     
 //    /* everything looks good, since we are expecting a
 //     message from the server in this example, let's try receiving a
