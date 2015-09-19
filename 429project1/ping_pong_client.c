@@ -52,6 +52,7 @@ int main(int argc, char** argv) {
      
      leaves the potential for
      buffer overflow vulnerability */
+    
     buffer = (char *) malloc(size);
     if (!buffer)
     {
