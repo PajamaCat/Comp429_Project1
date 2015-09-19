@@ -109,6 +109,7 @@ int main(int argc, char **argv) {
     
     /* size of msg received */
     short msg_size;
+
     
     buf = (char *)malloc(BUF_LEN);
     
@@ -237,6 +238,7 @@ int main(int argc, char **argv) {
 //                    perror("error sending message to client");
 //                    abort();
 //                }
+
             }
             
             /* check other connected sockets, see if there is
@@ -325,6 +327,7 @@ int main(int argc, char **argv) {
 //                            printf("Received message \"%s\". Client IP address is: %s\n",
 //                                   buf, inet_ntoa(current->client_addr.sin_addr));
 //                        }
+
                     }
                 }
             }
