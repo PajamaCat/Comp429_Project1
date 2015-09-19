@@ -7,7 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		11FAC1C11BADBC0400BC544B /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 11FAC1C01BADBC0400BC544B /* main.c */; };
+		11FAC1C11BADBC0400BC544B /* ping_pong_client.c in Sources */ = {isa = PBXBuildFile; fileRef = 11FAC1C01BADBC0400BC544B /* ping_pong_client.c */; };
+		11FAC1C81BADBC3D00BC544B /* ping_pong_server.c in Sources */ = {isa = PBXBuildFile; fileRef = 11FAC1C71BADBC3D00BC544B /* ping_pong_server.c */; settings = {ASSET_TAGS = (); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -24,7 +25,8 @@
 
 /* Begin PBXFileReference section */
 		11FAC1BD1BADBC0400BC544B /* 429project1 */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = 429project1; sourceTree = BUILT_PRODUCTS_DIR; };
-		11FAC1C01BADBC0400BC544B /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
+		11FAC1C01BADBC0400BC544B /* ping_pong_client.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ping_pong_client.c; sourceTree = "<group>"; };
+		11FAC1C71BADBC3D00BC544B /* ping_pong_server.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ping_pong_server.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,7 +59,8 @@
 		11FAC1BF1BADBC0400BC544B /* 429project1 */ = {
 			isa = PBXGroup;
 			children = (
-				11FAC1C01BADBC0400BC544B /* main.c */,
+				11FAC1C01BADBC0400BC544B /* ping_pong_client.c */,
+				11FAC1C71BADBC3D00BC544B /* ping_pong_server.c */,
 			);
 			path = 429project1;
 			sourceTree = "<group>";
@@ -96,7 +99,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 11FAC1B81BADBC0400BC544B /* Build configuration list for PBXProject "429project1" */;
+			buildConfigurationList = 11FAC1B81BADBC0400BC544B /* Build configuration list for PBXProject "Comp429_Project1" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
@@ -118,7 +121,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				11FAC1C11BADBC0400BC544B /* main.c in Sources */,
+				11FAC1C81BADBC3D00BC544B /* ping_pong_server.c in Sources */,
+				11FAC1C11BADBC0400BC544B /* ping_pong_client.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -219,7 +223,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		11FAC1B81BADBC0400BC544B /* Build configuration list for PBXProject "429project1" */ = {
+		11FAC1B81BADBC0400BC544B /* Build configuration list for PBXProject "Comp429_Project1" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				11FAC1C21BADBC0400BC544B /* Debug */,
