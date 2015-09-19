@@ -34,6 +34,12 @@ int main(int argc, char** argv) {
     /* server port number */
     unsigned short server_port = atoi (argv[2]);
     
+    /* The size in bytes of each message to send (10 <= size <= 65,535) */
+    int msgSize = atoi(argv[3]);
+    
+    /* The number of message exchanges to perform (1 <= count <= 10,000)*/
+    int numMsg = atoi(argv[4]);
+    
     char *buffer, *sendbuffer;
     int size = 500;
     int count;
