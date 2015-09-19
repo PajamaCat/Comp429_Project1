@@ -94,7 +94,8 @@ int main(int argc, char** argv) {
     
     
     sendbuffer[0] = msg_size;
-    for (int i = 10; i < msg_size; i++) {
+    int i;
+    for (i = 10; i < msg_size; i++) {
         sendbuffer[i] = 'x';
     }
     
@@ -116,8 +117,8 @@ int main(int argc, char** argv) {
 
         
         gettimeofday(&end, NULL);
-        time_diff = (end.tv_sec-start.tv_sec) * 1000 + (end.tv_usec-start.tv_usec);
-        printf("Latency for %d bytes message is %lu ms", msg_size, time_diff);
+        time_diff = (end.tv_sec-start.tv_sec) * 1000000 + (end.tv_usec-start.tv_usec);
+        printf("Latency for %d bytes message is %lu us", msg_size, time_diff);
         
         msg_count--;
     }
