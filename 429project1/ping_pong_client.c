@@ -118,7 +118,7 @@ int main(int argc, char** argv) {
         
         gettimeofday(&end, NULL);
         time_diff = (end.tv_sec-start.tv_sec) * 1000000 + (end.tv_usec-start.tv_usec);
-        printf("Latency for %d bytes message is %lu us", msg_size, time_diff);
+        printf("Latency for %d bytes message is %lu us \n", msg_size, time_diff);
         
         msg_count--;
     }
