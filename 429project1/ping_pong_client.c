@@ -104,11 +104,16 @@ int main(int argc, char** argv) {
         sendbuffer[2] = start.tv_sec;
         sendbuffer[6] = start.tv_usec;
         
-        send(sock, sendbuffer, msg_size, 0);
+        long temp;
+        
+        temp = send(sock, sendbuffer, msg_size, 0);
+        printf("Sent: %lu\n.", temp);
+
         /* everything looks good, since we are expecting a
          message from the server in this example, let's try receiving a
          message from the socket. this call will block until some data
          has been received */
+    
         if (recv(sock, buffer, msg_size, 0) < 0)
         {
             perror("receive failure");

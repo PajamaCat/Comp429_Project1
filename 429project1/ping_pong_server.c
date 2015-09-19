@@ -256,6 +256,7 @@ int main(int argc, char **argv) {
                      sending whatever is in the buffer buf
                      */
                     count = send(current->socket, buf, BUF_LEN, MSG_DONTWAIT);
+                    printf("Sent: %d\n.", count);
                     if (count < 0) {
                         if (errno == EAGAIN) {
                             /* we are trying to dump too much data down the socket,
@@ -278,6 +279,8 @@ int main(int argc, char **argv) {
                     /* we have data from a client */
                     
                     count = recv(current->socket, buf, BUF_LEN, 0);
+                    printf("Recv: %d\n.", count);
+
                     if (count <= 0) {
                         /* something is wrong */
                         if (count == 0) {
@@ -292,6 +295,8 @@ int main(int argc, char **argv) {
                     } else {
                         msg_size = buf[0];
                         count = send(current->socket, buf, msg_size, MSG_DONTWAIT);
+                        printf("Send2: %d\n.", count);
+                        
                         if (count < 0) {
                             if (errno == EAGAIN) {
                                 /* we are trying to dump too much data down the socket,
