@@ -99,7 +99,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 11FAC1B81BADBC0400BC544B /* Build configuration list for PBXProject "Comp429_Project1" */;
+			buildConfigurationList = 11FAC1B81BADBC0400BC544B /* Build configuration list for PBXProject "PingPongMsg" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
@@ -223,7 +223,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		11FAC1B81BADBC0400BC544B /* Build configuration list for PBXProject "Comp429_Project1" */ = {
+		11FAC1B81BADBC0400BC544B /* Build configuration list for PBXProject "PingPongMsg" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				11FAC1C21BADBC0400BC544B /* Debug */,

@@ -17,7 +17,7 @@
                BlueprintIdentifier = "11FAC1BC1BADBC0400BC544B"
                BuildableName = "429project1"
                BlueprintName = "429project1"
-               ReferencedContainer = "container:Comp429_Project1.xcodeproj">
+               ReferencedContainer = "container:PingPongMsg.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -35,7 +35,7 @@
             BlueprintIdentifier = "11FAC1BC1BADBC0400BC544B"
             BuildableName = "429project1"
             BlueprintName = "429project1"
-            ReferencedContainer = "container:Comp429_Project1.xcodeproj">
+            ReferencedContainer = "container:PingPongMsg.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <AdditionalOptions>
@@ -58,7 +58,7 @@
             BlueprintIdentifier = "11FAC1BC1BADBC0400BC544B"
             BuildableName = "429project1"
             BlueprintName = "429project1"
-            ReferencedContainer = "container:Comp429_Project1.xcodeproj">
+            ReferencedContainer = "container:PingPongMsg.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <AdditionalOptions>
@@ -77,7 +77,7 @@
             BlueprintIdentifier = "11FAC1BC1BADBC0400BC544B"
             BuildableName = "429project1"
             BlueprintName = "429project1"
-            ReferencedContainer = "container:Comp429_Project1.xcodeproj">
+            ReferencedContainer = "container:PingPongMsg.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
