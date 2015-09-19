@@ -15,7 +15,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-
+#include <math.h>
 #include <time.h>
 #include <sys/time.h>
 
@@ -135,11 +135,18 @@ int main(int argc, char** argv) {
             perror("receive failure");
             abort();
         }
-
+		
+        memcpy(&start_sec, buffer + 2, 4);
+        memcpy(&start_usec, buffer + 6, 4);
         
         gettimeofday(&end, NULL);
         
-        time_diff = (end.tv_sec-start.tv_sec) * 1000000 + (end.tv_usec-start.tv_usec);
+        unsigned int end_sec = (unsigned int)end.tv_sec;
+        unsigned int end_usec = (unsigned int)end.tv_usec;
+        
+        unsigned int diff = end_usec - start_usec;
+        
+        time_diff = (diff > 0 ? diff : diff + pow(2, 32));
         printf("Latency for %d bytes message is %lu us \n", msg_size, time_diff);
         
         msg_count--;
