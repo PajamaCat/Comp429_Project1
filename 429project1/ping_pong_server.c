@@ -67,6 +67,59 @@ void add(struct node *head, int socket, struct sockaddr_in addr) {
 }
 
 
+int send_all(int socket, int msg_size, char *buffer, int mode)
+{
+    int sent_msg_size = 0;
+    ssize_t sent_bytes = 0;
+    int remaining_bytes = msg_size;
+    
+    while (sent_msg_size < msg_size) {
+        sent_bytes = send(socket, buffer + sent_msg_size, remaining_bytes, mode);
+        if (sent_bytes < 0) {
+            perror("sent failure");
+            abort();
+        }
+        printf("Sent %lu\n", sent_bytes);
+        sent_msg_size += sent_bytes;
+        remaining_bytes -= sent_bytes;
+    }
+    return sent_msg_size;
+}
+
+int recv_all(int socket, unsigned short *msg_size, char *buffer)
+{
+    int recv_msg_size = 0;
+    ssize_t recv_bytes = 0;
+    int remaining_bytes = 0;
+    
+    recv_bytes = recv(socket, buffer, 2, 0);
+    printf("first recv_msg_size %lu\n", recv_bytes);
+    memcpy(msg_size, buffer, 2);
+    
+    recv_msg_size += recv_bytes;
+    remaining_bytes = *msg_size - recv_msg_size;
+    
+    printf("Msg size %d\n", *msg_size);
+    
+    while (recv_msg_size < *msg_size) {
+        
+        recv_bytes = recv(socket, buffer + recv_msg_size, remaining_bytes, 0);
+        if (recv_bytes < 0) {
+            perror("recv failure");
+            abort();
+        }
+        printf("Received %lu\n", recv_bytes);
+        printf("recv_msg_size %d, remaining_bytes %d\n", recv_msg_size, remaining_bytes);
+        recv_msg_size += recv_bytes;
+        remaining_bytes -= recv_bytes;
+        if (buffer[recv_msg_size - 1] == 0)
+            break;
+    }
+    
+    return recv_msg_size;
+}
+
+
 /*****************************************/
 /* main program                          */
 /*****************************************/
@@ -252,8 +305,9 @@ int main(int argc, char **argv) {
                      but here for simplicity, let's say we are just
                      sending whatever is in the buffer buf
                      */
-                    count = send(current->socket, buf, BUF_LEN, MSG_DONTWAIT);
-                    printf("Sent: %d\n.", count);
+                    count = send_all(current->socket, BUF_LEN, buf, MSG_DONTWAIT);
+//                    count = send(current->socket, buf, BUF_LEN, MSG_DONTWAIT);
+                    printf("SentTotal: %d\n", count);
                     if (count < 0) {
                         if (errno == EAGAIN) {
                             /* we are trying to dump too much data down the socket,
@@ -274,9 +328,9 @@ int main(int argc, char **argv) {
                 
                 if (FD_ISSET(current->socket, &read_set)) {
                     /* we have data from a client */
-                    
-                    count = recv(current->socket, buf, BUF_LEN, 0);
-                    printf("Recv: %d\n.", count);
+                    count = recv_all(current->socket, &msg_size, buf);
+//                    count = recv(current->socket, buf, BUF_LEN, 0);
+                    printf("RecvTotal: %d\n", count);
 
                     if (count <= 0) {
                         /* something is wrong */
@@ -290,10 +344,12 @@ int main(int argc, char **argv) {
                         close(current->socket);
                         dump(&head, current->socket);
                     } else {
-                        memcpy(&msg_size, buf, 2);
-                        count = send(current->socket, buf, msg_size, MSG_DONTWAIT);
+//                        memcpy(&msg_size, buf, 2);
+                        count = send_all(current->socket, msg_size, buf, MSG_DONTWAIT);
+                        //                    count = send(current->socket, buf, BUF_LEN, MSG_DONTWAIT);
+                        printf("SentTotal: %d\n", count);
+//                        count = send(current->socket, buf, msg_size, MSG_DONTWAIT);
                         printf("msg_size from the first 2 bytes: %hu \n", msg_size);
-                        printf("Send2: %d\n.", count);
                         
                         if (count < 0) {
                             if (errno == EAGAIN) {

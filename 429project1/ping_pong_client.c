@@ -19,6 +19,46 @@
 #include <time.h>
 #include <sys/time.h>
 
+int send_all(int socket, int msg_size, char *buffer)
+{
+    int sent_msg_size = 0;
+    ssize_t sent_bytes = 0;
+    int remaining_bytes = msg_size;
+    
+    while (sent_msg_size < msg_size) {
+        sent_bytes = send(socket, buffer + sent_msg_size, remaining_bytes, 0);
+        if (sent_bytes < 0) {
+            perror("sent failure");
+            abort();
+        }
+        printf("Sent... %lu\n", sent_bytes);
+        sent_msg_size += sent_bytes;
+        remaining_bytes -= sent_bytes;
+    }
+    return sent_msg_size;
+}
+
+int recv_all(int socket, int msg_size, char *buffer)
+{
+    int recv_msg_size = 0;
+    ssize_t recv_bytes = 0;
+    int remaining_bytes = msg_size;
+    
+    while (recv_msg_size < msg_size) {
+        recv_bytes = recv(socket, buffer + recv_msg_size, remaining_bytes, 0);
+        if (recv_bytes < 0) {
+            perror("recv failure");
+            abort();
+        }
+        printf("Received %lu\n", recv_bytes);
+        recv_msg_size += recv_bytes;
+        remaining_bytes -= recv_bytes;
+    }
+    
+    return recv_msg_size;
+}
+
+
 /* simple client, takes two parameters, the server domain name,
  and the server port number */
 
@@ -48,16 +88,10 @@ int main(int argc, char** argv) {
     struct timeval start, end;
     long time_diff;
     
+    /* A buffer to store received message, and a buffer to send message to server */
     char *buffer, *sendbuffer;
     
-    /* allocate a memory buffer in the heap */
-    /* putting a buffer on the stack like:
-     
-     char buffer[500];
-     
-     leaves the potential for
-     buffer overflow vulnerability */
-    
+    /* Malloc buffers */
     buffer = (char *) malloc(msg_size);
     if (!buffer)
     {
@@ -92,62 +126,59 @@ int main(int argc, char** argv) {
         perror("connect to server failed");
         abort();
     }
+	
+    /* setup sendbuffer with an ending zero */
     
     memcpy(sendbuffer, &msg_size, 2);
-//    sendbuffer[0] = msg_size;
-//    
-//    printf("sendbuffer %hu\n", (unsigned short)sendbuffer[0]);
+    unsigned int start_sec;
+    unsigned int start_usec;
+    unsigned int end_sec;
+    unsigned int end_usec;
+    
     int i;
-    for (i = 10; i < msg_size; i++) {
+    for (i = 10; i < msg_size - 1; i++) {
         sendbuffer[i] = 'x';
     }
+    sendbuffer[msg_size - 1] = 0;
     
+    /* Set timestamp and send/receive messages */
     while (msg_count > 0) {
         gettimeofday(&start, NULL);
 		
-        unsigned int start_sec = (unsigned int)start.tv_sec;
-        unsigned int start_usec = (unsigned int)start.tv_usec;
+        start_sec = (unsigned int)start.tv_sec;
+        start_usec = (unsigned int)start.tv_usec;
         
         memcpy(sendbuffer+2, &start_sec, 4);
         memcpy(sendbuffer+6, &start_usec, 4);
         
-        long temp;
-        
-        temp = send(sock, sendbuffer, msg_size, 0);
+        /* send all messages */
+        long sent_msg_size = send_all(sock, msg_size, sendbuffer);
+        printf("Sent: %lu.\n", sent_msg_size);
+
+
+		/* receive all messages */
+        long recv_msg_size = recv_all(sock, msg_size, buffer);
         
         unsigned short holder;
-        memcpy(&holder, sendbuffer, 2);
-        printf("Sent: %lu.\n", temp);
-        printf("time %hu\n", (unsigned short)holder);
-
-        /* everything looks good, since we are expecting a
-         message from the server in this example, let's try receiving a
-         message from the socket. this call will block until some data
-         has been received */
-    	
-        temp = recv(sock, buffer, msg_size, 0);
         memcpy(&holder, buffer, 2);
         printf("Buff[0] %hu\n", (unsigned short)holder);
-        printf("Recv: %lu.\n", temp);
-
-        if (temp < 0)
-        {
-            perror("receive failure");
-            abort();
-        }
+        printf("Recv: %lu.\n", recv_msg_size);
 		
+        
+        /* copy back start timestamp */
         memcpy(&start_sec, buffer + 2, 4);
         memcpy(&start_usec, buffer + 6, 4);
         
         gettimeofday(&end, NULL);
         
-        unsigned int end_sec = (unsigned int)end.tv_sec;
-        unsigned int end_usec = (unsigned int)end.tv_usec;
+        end_sec = (unsigned int)end.tv_sec;
+        end_usec = (unsigned int)end.tv_usec;
         
         unsigned int diff = end_usec - start_usec;
+        printf("start_sec %d, start_usec %d, end_sec %d, end_usec %d\n", start_sec, start_usec, end_sec, end_usec);
         
-        time_diff = (diff > 0 ? diff : diff + pow(2, 32));
-        printf("Latency for %d bytes message is %lu us \n", msg_size, time_diff);
+        time_diff = (end_sec - start_sec) * 1000000 + (diff > 0 ? diff : diff + pow(2, 32));
+        printf("Latency for %d bytes message is %lu us \n\n", msg_size, time_diff);
         
         msg_count--;
     }
@@ -161,7 +192,8 @@ int main(int argc, char** argv) {
 
 }
 
-    
+
+
 //    /* everything looks good, since we are expecting a
 //     message from the server in this example, let's try receiving a
 //     message from the socket. this call will block until some data
