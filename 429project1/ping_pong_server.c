@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 
+#define BUF_LEN 65535
 /**************************************************/
 /* a few simple linked list functions             */
 /**************************************************/
@@ -32,6 +33,9 @@ struct node {
      all the information regarding this socket.
      e.g. what data needs to be sent next */
     struct node *next;
+    
+    char buffer[BUF_LEN];
+    int pointer;
 };
 
 /* remove the data structure associated with a connected socket
@@ -63,62 +67,9 @@ void add(struct node *head, int socket, struct sockaddr_in addr) {
     new_node->client_addr = addr;
     new_node->pending_data = 0;
     new_node->next = head->next;
+    new_node->pointer = 0;
     head->next = new_node;
 }
-
-
-int send_all(int socket, int msg_size, char *buffer, int mode)
-{
-    int sent_msg_size = 0;
-    ssize_t sent_bytes = 0;
-    int remaining_bytes = msg_size;
-    
-    while (sent_msg_size < msg_size) {
-        sent_bytes = send(socket, buffer + sent_msg_size, remaining_bytes, mode);
-        if (sent_bytes < 0) {
-            perror("sent failure");
-            abort();
-        }
-        printf("Sent %lu\n", sent_bytes);
-        sent_msg_size += sent_bytes;
-        remaining_bytes -= sent_bytes;
-    }
-    return sent_msg_size;
-}
-
-int recv_all(int socket, unsigned short *msg_size, char *buffer)
-{
-    int recv_msg_size = 0;
-    ssize_t recv_bytes = 0;
-    int remaining_bytes = 0;
-    
-    recv_bytes = recv(socket, buffer, 2, 0);
-    printf("first recv_msg_size %lu\n", recv_bytes);
-    memcpy(msg_size, buffer, 2);
-    
-    recv_msg_size += recv_bytes;
-    remaining_bytes = *msg_size - recv_msg_size;
-    
-    printf("Msg size %d\n", *msg_size);
-    
-    while (recv_msg_size < *msg_size) {
-        
-        recv_bytes = recv(socket, buffer + recv_msg_size, remaining_bytes, 0);
-        if (recv_bytes < 0) {
-            perror("recv failure");
-            abort();
-        }
-        printf("Received %lu\n", recv_bytes);
-        printf("recv_msg_size %d, remaining_bytes %d\n", recv_msg_size, remaining_bytes);
-        recv_msg_size += recv_bytes;
-        remaining_bytes -= recv_bytes;
-        if (buffer[recv_msg_size - 1] == 0)
-            break;
-    }
-    
-    return recv_msg_size;
-}
-
 
 /*****************************************/
 /* main program                          */
@@ -147,21 +98,16 @@ int main(int argc, char **argv) {
     int select_retval;
     
     /* number of bytes sent/received */
-    int count;
+    ssize_t count;
     
     /* linked list for keeping track of connected sockets */
     struct node head;
     struct node *current, *next;
     
-    /* a buffer to read data */
-    char *buf;
-    int BUF_LEN = 65535;
     
     /* size of msg received */
     unsigned short msg_size;
 
-    
-    buf = (char *)malloc(BUF_LEN);
     
     /* initialize dummy head node of linked list */
     head.socket = -1;
@@ -252,6 +198,7 @@ int main(int argc, char **argv) {
         {
             if (FD_ISSET(sock, &read_set)) /* check the server socket */
             {
+                printf("I am trying to accept a new sock \n");
                 /* there is an incoming connection, try to accept it */
                 new_sock = accept (sock, (struct sockaddr *) &addr, &addr_len);
                 
@@ -280,14 +227,6 @@ int main(int argc, char **argv) {
                 
                 /* remember this client connection in our linked list */
                 add(&head, new_sock, addr);
-                
-                /* let's send a message to the client just for fun */
-//                count = send(new_sock, message, strlen(message)+1, 0);
-//                if (count < 0)
-//                {
-//                    perror("error sending message to client");
-//                    abort();
-//                }
 
             }
             
@@ -305,91 +244,63 @@ int main(int argc, char **argv) {
                      but here for simplicity, let's say we are just
                      sending whatever is in the buffer buf
                      */
-                    count = send_all(current->socket, BUF_LEN, buf, MSG_DONTWAIT);
-//                    count = send(current->socket, buf, BUF_LEN, MSG_DONTWAIT);
-                    printf("SentTotal: %d\n", count);
+                    memcpy(&msg_size, current->buffer, 2);
+                    count = send(current->socket, current->buffer+current->pointer, msg_size-current->pointer, MSG_DONTWAIT);
+                    
                     if (count < 0) {
                         if (errno == EAGAIN) {
-                            /* we are trying to dump too much data down the socket,
-                             it cannot take more for the time being
-                             will have to go back to select and wait til select
-                             tells us the socket is ready for writing
-                             */
+                            // No-op
                         } else {
-                            /* something else is wrong */
+                            printf("Something is wrong while sending to Client IP address: %s\n", inet_ntoa(current->client_addr.sin_addr));
+                            close(current->socket);
+                            dump(&head, current->socket);
                         }
+                        continue;
                     }
-                    /* note that it is important to check count for exactly
-                     how many bytes were actually sent even when there are
-                     no error. send() may send only a portion of the buffer
-                     to be sent.
-                     */
+                    
+                    current->pointer += count;
+                    if(current->pointer == msg_size) {
+                        current->pointer = 0;
+                        current-> pending_data = 0;
+                    }
+                    
                 }
                 
                 if (FD_ISSET(current->socket, &read_set)) {
                     /* we have data from a client */
-                    count = recv_all(current->socket, &msg_size, buf);
-//                    count = recv(current->socket, buf, BUF_LEN, 0);
-                    printf("RecvTotal: %d\n", count);
+                    
+                    
+                    
+                    count = recv(current->socket, current->buffer+current->pointer, BUF_LEN, 0);
+                    memcpy(&msg_size, current->buffer, 2);
 
                     if (count <= 0) {
-                        /* something is wrong */
-                        if (count == 0) {
-                            printf("Client closed connection. Client IP address is: %s\n", inet_ntoa(current->client_addr.sin_addr));
+                        if (errno == EAGAIN) {
+                            // No-op
                         } else {
-                            perror("error receiving from a client");
-                        }
-                        
-                        /* connection is closed, clean up */
-                        close(current->socket);
-                        dump(&head, current->socket);
-                    } else {
-//                        memcpy(&msg_size, buf, 2);
-                        count = send_all(current->socket, msg_size, buf, MSG_DONTWAIT);
-                        //                    count = send(current->socket, buf, BUF_LEN, MSG_DONTWAIT);
-                        printf("SentTotal: %d\n", count);
-//                        count = send(current->socket, buf, msg_size, MSG_DONTWAIT);
-                        printf("msg_size from the first 2 bytes: %hu \n", msg_size);
-                        
-                        if (count < 0) {
-                            if (errno == EAGAIN) {
-                                /* we are trying to dump too much data down the socket,
-                                 it cannot take more for the time being
-                                 will have to go back to select and wait til select
-                                 tells us the socket is ready for writing
-                                 */
+                            /* something is wrong */
+                            if (count == 0) {
+                                printf("Client closed connection. Client IP address is: %s\n", inet_ntoa(current->client_addr.sin_addr));
                             } else {
-                                /* something else is wrong */
+                                perror("error receiving from a client");
                             }
+                            
+                            /* connection is closed, clean up */
+                            close(current->socket);
+                            dump(&head, current->socket);
                         }
-                        
-                        
-//                        /* we got count bytes of data from the client */
-//                        /* in general, the amount of data received in a recv()
-//                         call may not be a complete application message. it
-//                         is important to check the data received against
-//                         the message format you expect. if only a part of a
-//                         message has been received, you must wait and
-//                         receive the rest later when more data is available
-//                         to be read */
-//                        
-//                        /* for this simple example, we expect the message to
-//                         be a string, and the last byte of the string to be 0,
-//                         i.e. end of string */
-//                        if (buf[count-1] != 0) {
-//                            /* we got only a part of a string, we won't handle this in
-//                             this simple example */
-//                            printf("Message incomplete, something is still being transmitted\n");
-//                            return 0;
-//                        } else {
-//                            /* a complete string is received, print it out */
-//                            printf("Received message \"%s\". Client IP address is: %s\n",
-//                                   buf, inet_ntoa(current->client_addr.sin_addr));
-//                        }
-
+                        continue;
                     }
+                    
+                    current->pointer += count;
+                    if(current->pointer == msg_size) {
+                        current->pointer = 0;
+                        current-> pending_data = 1;
+                    }
+                    
                 }
             }
+            
         }
     }
 }
