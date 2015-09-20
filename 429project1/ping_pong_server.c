@@ -198,7 +198,6 @@ int main(int argc, char **argv) {
         {
             if (FD_ISSET(sock, &read_set)) /* check the server socket */
             {
-                printf("I am trying to accept a new sock \n");
                 /* there is an incoming connection, try to accept it */
                 new_sock = accept (sock, (struct sockaddr *) &addr, &addr_len);
                 
