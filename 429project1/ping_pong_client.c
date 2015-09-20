@@ -79,7 +79,10 @@ int main(int argc, char** argv) {
     
     /* The size in bytes of each message to send (10 <= size <= 65,535) */
     unsigned short msg_size = atoi(argv[3]);
-    printf("1: %d, 2: %hu\n", atoi(argv[3]), msg_size);
+    if (msg_size < 0 || msg_size > 65535) {
+        perror("Input message size should between 10 and 65535.");
+        abort();
+    }
     
     /* The number of message exchanges to perform (1 <= count <= 10,000)*/
     int msg_count = atoi(argv[4]);
@@ -134,6 +137,7 @@ int main(int argc, char** argv) {
     unsigned int start_usec;
     unsigned int end_sec;
     unsigned int end_usec;
+    unsigned int diff;	// difference between start_usec and end_usec
     
     int i;
     for (i = 10; i < msg_size - 1; i++) {
@@ -152,18 +156,10 @@ int main(int argc, char** argv) {
         memcpy(sendbuffer+6, &start_usec, 4);
         
         /* send all messages */
-        long sent_msg_size = send_all(sock, msg_size, sendbuffer);
-        printf("Sent: %lu.\n", sent_msg_size);
-
+        send_all(sock, msg_size, sendbuffer);
 
 		/* receive all messages */
-        long recv_msg_size = recv_all(sock, msg_size, buffer);
-        
-        unsigned short holder;
-        memcpy(&holder, buffer, 2);
-        printf("Buff[0] %hu\n", (unsigned short)holder);
-        printf("Recv: %lu.\n", recv_msg_size);
-		
+        recv_all(sock, msg_size, buffer);
         
         /* copy back start timestamp */
         memcpy(&start_sec, buffer + 2, 4);
@@ -174,16 +170,14 @@ int main(int argc, char** argv) {
         end_sec = (unsigned int)end.tv_sec;
         end_usec = (unsigned int)end.tv_usec;
         
-        unsigned int diff = end_usec - start_usec;
-        printf("start_sec %d, start_usec %d, end_sec %d, end_usec %d\n", start_sec, start_usec, end_sec, end_usec);
+        diff = end_usec - start_usec;
         
         time_diff = (end_sec - start_sec) * 1000000 + (diff > 0 ? diff : diff + pow(2, 32));
-        printf("Latency for %d bytes message is %lu us \n\n", msg_size, time_diff);
         
         msg_count--;
     }
     
-    printf("Ping-Pong finished!");
+    printf("Ping-Pong finished!\n");
     
     close(sock);
     free(buffer);
