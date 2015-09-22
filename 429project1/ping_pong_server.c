@@ -114,7 +114,6 @@ int main(int argc, char **argv) {
     /* size of msg received */
     unsigned short msg_size;
 
-    
     /* initialize dummy head node of linked list */
     head.socket = -1;
     head.next = 0;
