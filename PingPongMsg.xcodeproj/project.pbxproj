@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		11FAC1C11BADBC0400BC544B /* ping_pong_client.c in Sources */ = {isa = PBXBuildFile; fileRef = 11FAC1C01BADBC0400BC544B /* ping_pong_client.c */; };
 		11FAC1C81BADBC3D00BC544B /* ping_pong_server.c in Sources */ = {isa = PBXBuildFile; fileRef = 11FAC1C71BADBC3D00BC544B /* ping_pong_server.c */; settings = {ASSET_TAGS = (); }; };
+		11FAC1CA1BB10F4F00BC544B /* web_client.c in Sources */ = {isa = PBXBuildFile; fileRef = 11FAC1C91BB10F4F00BC544B /* web_client.c */; settings = {ASSET_TAGS = (); }; };
+		11FAC1CC1BB10F9600BC544B /* Makefile in Sources */ = {isa = PBXBuildFile; fileRef = 11FAC1CB1BB10F9600BC544B /* Makefile */; settings = {ASSET_TAGS = (); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -27,6 +29,8 @@
 		11FAC1BD1BADBC0400BC544B /* 429project1 */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = 429project1; sourceTree = BUILT_PRODUCTS_DIR; };
 		11FAC1C01BADBC0400BC544B /* ping_pong_client.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ping_pong_client.c; sourceTree = "<group>"; };
 		11FAC1C71BADBC3D00BC544B /* ping_pong_server.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ping_pong_server.c; sourceTree = "<group>"; };
+		11FAC1C91BB10F4F00BC544B /* web_client.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = web_client.c; sourceTree = "<group>"; };
+		11FAC1CB1BB10F9600BC544B /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -59,8 +63,10 @@
 		11FAC1BF1BADBC0400BC544B /* 429project1 */ = {
 			isa = PBXGroup;
 			children = (
+				11FAC1CB1BB10F9600BC544B /* Makefile */,
 				11FAC1C01BADBC0400BC544B /* ping_pong_client.c */,
 				11FAC1C71BADBC3D00BC544B /* ping_pong_server.c */,
+				11FAC1C91BB10F4F00BC544B /* web_client.c */,
 			);
 			path = 429project1;
 			sourceTree = "<group>";
@@ -122,6 +128,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				11FAC1C81BADBC3D00BC544B /* ping_pong_server.c in Sources */,
+				11FAC1CA1BB10F4F00BC544B /* web_client.c in Sources */,
+				11FAC1CC1BB10F9600BC544B /* Makefile in Sources */,
 				11FAC1C11BADBC0400BC544B /* ping_pong_client.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -239,6 +247,7 @@
 				11FAC1C61BADBC0400BC544B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

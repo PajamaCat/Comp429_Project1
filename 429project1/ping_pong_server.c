@@ -256,26 +256,46 @@ int main(int argc, char **argv) {
                      but here for simplicity, let's say we are just
                      sending whatever is in the buffer buf
                      */
-                    memcpy(&msg_size, current->buffer, 2);
-                    count = send(current->socket, current->buffer+current->pointer, msg_size-current->pointer, MSG_DONTWAIT);
-                    
-                    if (count < 0) {
-                        if (errno == EAGAIN) {
-                            // No-op
-                        } else {
-                            printf("Something is wrong while sending to Client IP address: %s\n", inet_ntoa(current->client_addr.sin_addr));
-                            close(current->socket);
-                            dump(&head, current->socket);
+                    if (www_mode) {
+                        count = send(current->socket, current->buffer+current->pointer, BUF_LEN-current->pointer, MSG_DONTWAIT);
+                        if (count < 0) {
+                            if (errno == EAGAIN) {
+                                // No-op
+                            } else {
+                                printf("Something is wrong while sending to Client IP address: %s\n", inet_ntoa(current->client_addr.sin_addr));
+                                close(current->socket);
+                                dump(&head, current->socket);
+                            }
+                            continue;
                         }
-                        continue;
+                        
+                        current->pointer += count;
+                        if(current->buffer + current->pointer == 0) {	// end of file
+                            current->pointer = 0;
+                            current-> pending_data = 0;
+                        }
+                        
+                    } else {
+                        memcpy(&msg_size, current->buffer, 2);
+                        count = send(current->socket, current->buffer+current->pointer, msg_size-current->pointer, MSG_DONTWAIT);
+                        
+                        if (count < 0) {
+                            if (errno == EAGAIN) {
+                                // No-op
+                            } else {
+                                printf("Something is wrong while sending to Client IP address: %s\n", inet_ntoa(current->client_addr.sin_addr));
+                                close(current->socket);
+                                dump(&head, current->socket);
+                            }
+                            continue;
+                        }
+                        
+                        current->pointer += count;
+                        if(current->pointer == msg_size) {
+                            current->pointer = 0;
+                            current-> pending_data = 0;
+                        }
                     }
-                    
-                    current->pointer += count;
-                    if(current->pointer == msg_size) {
-                        current->pointer = 0;
-                        current-> pending_data = 0;
-                    }
-                    
                 }
                 
                 if (FD_ISSET(current->socket, &read_set)) {
@@ -301,11 +321,13 @@ int main(int argc, char **argv) {
                     }
                     
                     if (www_mode) {
+                        printf("CURRENT BUFFER IS %s\n", current->buffer);
                         if (strncmp(current->buffer + count - 4 , "\r\n\r\n", 4) != 0) {
                             continue;
                         }
                         
                         if (strncmp(current->buffer, "GET", 3) == 0) {
+                            printf("PASSED GET\n");
                             char *separator = strpbrk(current->buffer + 3, "/");
                             char *path_begin = separator;
                             while (*separator != ' ') {
@@ -314,7 +336,9 @@ int main(int argc, char **argv) {
                             char filepath[separator-path_begin];
                             memcpy(filepath, path_begin, separator-path_begin);
                             
-                            char *http_version = strpbrk(current->buffer+current->pointer, "HTTP");
+                            char *http_version = strpbrk(current->buffer, "HTTP");
+                            printf("miao %s\n", http_version);
+
                             char *http_begin = http_version;
                             while (*http_version != ' ') {
                                 http_version++;
@@ -326,8 +350,11 @@ int main(int argc, char **argv) {
                             memcpy(current->buffer + current->pointer, " ", 1);
                             current->pointer++;
                             
+                            printf("CURRENT BUFFER AFTER HTTP VERSION %s\n", current->buffer);
+
                             /* check if the file exists */
                             if (access(filepath, F_OK) != -1) {
+                                printf("PASSED filecheck\n");
                                 if (strstr(filepath, ".html") != NULL || strstr(filepath, ".txt") != NULL) {
                                     memcpy(current->buffer+current->pointer, OK, sizeof(OK));
                                     current->pointer += sizeof(OK);
@@ -342,6 +369,7 @@ int main(int argc, char **argv) {
                                     stat(filepath, &st);
                                     fread(current->buffer+current->pointer, st.st_size, 1, fp);
                                     fclose(fp);
+                                    current->pointer += st.st_size;
                                     
                                 } else {
                                     /* unsupported file type */
@@ -351,6 +379,7 @@ int main(int argc, char **argv) {
                                     
                                     current->pointer += sizeof(NOT_IMPLEMENTED);
                                     memcpy(current->buffer+current->pointer, " \r\n", 5);
+                                    current->pointer += 5;
                                 }
                                 
                             } else {	// file does not exist
@@ -360,6 +389,7 @@ int main(int argc, char **argv) {
                                 
                                 current->pointer += sizeof(NOT_FOUND);
                                 memcpy(current->buffer+current->pointer, " \r\n", 5);
+                                current->pointer += 5;
                             }
                             
                         } else {	// 	request is not get
@@ -369,8 +399,9 @@ int main(int argc, char **argv) {
                             
                             current->pointer += sizeof(BAD_REQUEST);
                             memcpy(current->buffer+current->pointer, " \r\n", 5);
+                            current->pointer += 5;
                         }
-                        current-> pending_data = 1;
+                        current->pending_data = 1;
                         current->pointer = 0;
                         
                     } else { // non WWW MODE
