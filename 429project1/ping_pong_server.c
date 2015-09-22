@@ -19,11 +19,11 @@
 #include <sys/stat.h>
 
 #define BUF_LEN 65535
-#define OK	"200 OK"
-#define CONTENT_TYPE "Content-Type: text/html\r\n\r\n"
-#define NOT_IMPLEMENTED "501 Not Implemented"
-#define NOT_FOUND "404 Not Found"
-#define BAD_REQUEST "400 Bad Request"
+#define OK	"200 OK\r\n"
+#define CONTENT_TYPE "Content-Type: text/html\r\n"
+#define NOT_IMPLEMENTED "501 Not Implemented\r\n"
+#define NOT_FOUND "404 Not Found\r\n"
+#define BAD_REQUEST "400 Bad Request\r\n"
 /**************************************************/
 /* a few simple linked list functions             */
 /**************************************************/
@@ -39,8 +39,8 @@ struct node {
      all the information regarding this socket.
      e.g. what data needs to be sent next */
     struct node *next;
-    
     char buffer[BUF_LEN];
+    FILE *fp;
     int pointer;
 };
 
@@ -280,6 +280,10 @@ int main(int argc, char **argv) {
                             current-> pending_data = 0;
                         }
                         
+                        /* if there's no pending file to read, close connection. otherwise do nothing */
+                        
+                        
+                        
                     } else {
                         memcpy(&msg_size, current->buffer, 2);
                         count = send(current->socket, current->buffer+current->pointer, msg_size-current->pointer, MSG_DONTWAIT);
@@ -304,28 +308,33 @@ int main(int argc, char **argv) {
                 }
                 
                 if (FD_ISSET(current->socket, &read_set)) {
-                    /* we have data from a client */
-                    count = recv(current->socket, current->buffer+current->pointer, BUF_LEN, 0);
-                    
-                    if (count <= 0) {
-                        if (errno == EAGAIN) {
-                            // No-op
-                        } else {
-                            /* something is wrong */
-                            if (count == 0) {
-                                printf("Client closed connection. Client IP address is: %s\n", inet_ntoa(current->client_addr.sin_addr));
-                            } else {
-                                perror("error receiving from a client");
-                            }
-                            
-                            /* connection is closed, clean up */
-                            close(current->socket);
-                            dump(&head, current->socket);
-                        }
-                        continue;
-                    }
                     
                     if (www_mode) {
+                        
+                        /* if there's file remaining to read, read file, otherwise receive message */
+                        
+                        
+                        /* we have data from a client */
+                        count = recv(current->socket, current->buffer+current->pointer, BUF_LEN, 0);
+                        
+                        if (count <= 0) {
+                            if (errno == EAGAIN) {
+                                // No-op
+                            } else {
+                                /* something is wrong */
+                                if (count == 0) {
+                                    printf("Client closed connection. Client IP address is: %s\n", inet_ntoa(current->client_addr.sin_addr));
+                                } else {
+                                    perror("error receiving from a client");
+                                }
+                                
+                                /* connection is closed, clean up */
+                                close(current->socket);
+                                dump(&head, current->socket);
+                            }
+                            continue;
+                        }
+                        
                         printf("CURRENT BUFFER IS %s\n", current->buffer);
                         if (strncmp(current->buffer + count - 4 , "\r\n\r\n", 4) != 0) {
                             continue;
@@ -338,11 +347,12 @@ int main(int argc, char **argv) {
                             while (*separator != ' ') {
                                 separator++;
                             }
-                            char filepath[separator-path_begin];
+
+                            char filepath[separator-path_begin+1];
                             memcpy(filepath, path_begin, separator-path_begin);
+                            filepath[separator-path_begin] = 0;
                             
                             char *http_version = strstr(current->buffer, "HTTP");
-                            printf("miao %s\n", http_version);
 
                             char *http_begin = http_version;
                             while (*http_version != '\r') {
@@ -352,28 +362,25 @@ int main(int argc, char **argv) {
                             /* add http version */
                             memcpy(current->buffer, http_begin, http_version-http_begin);
                             current->pointer += http_version-http_begin;
-                            printf("CURRENT BUFFER AFTER HTTP VERSION %s", current->buffer);
                             memcpy(current->buffer + current->pointer, " ", 1);
                             current->pointer++;
-                            
-                            printf("CURRENT BUFFER AFTER HTTP VERSION %s", current->buffer);
 
                             /* check if the file exists */
                             if (access(filepath, F_OK) != -1) {
                                 printf("PASSED filecheck\n");
                                 if (strstr(filepath, ".html") != NULL || strstr(filepath, ".txt") != NULL) {
-                                    memcpy(current->buffer+current->pointer, OK, sizeof(OK));
-                                    current->pointer += sizeof(OK);
-                                    memcpy(current->buffer+current->pointer, " \r\n", 5);
-                                    current->pointer += 5;
-                                    memcpy(current->buffer+current->pointer, CONTENT_TYPE, sizeof(CONTENT_TYPE));
-                                    current->pointer += sizeof(CONTENT_TYPE);
+                                    memcpy(current->buffer+current->pointer, OK, sizeof(OK)-1);
+                                    current->pointer += sizeof(OK)-1;
+                                    printf("size of OK %lu\n", sizeof(OK));
+                                    memcpy(current->buffer+current->pointer, CONTENT_TYPE, sizeof(CONTENT_TYPE)-1);
+                                    current->pointer += sizeof(CONTENT_TYPE)-1;
                                     
                                     /* read file */
                                     fp = fopen(filepath, "r");
                                     struct stat st;
                                     stat(filepath, &st);
                                     fread(current->buffer+current->pointer, st.st_size, 1, fp);
+                                    printf("After read file %s\n", current->buffer);
                                     fclose(fp);
                                     current->pointer += st.st_size;
                                     
@@ -381,31 +388,24 @@ int main(int argc, char **argv) {
                                     /* unsupported file type */
                                     memcpy(current->buffer+current->pointer,
                                            NOT_IMPLEMENTED,
-                                           sizeof(NOT_IMPLEMENTED));
-                                    
-                                    current->pointer += sizeof(NOT_IMPLEMENTED);
-                                    memcpy(current->buffer+current->pointer, " \r\n", 3);
-                                    current->pointer += 5;
+                                           sizeof(NOT_IMPLEMENTED)-1);
+                                    current->pointer += sizeof(NOT_IMPLEMENTED)-1;
                                 }
                                 
                             } else {	// file does not exist
                                 memcpy(current->buffer+current->pointer,
                                        NOT_FOUND,
-                                       sizeof(NOT_FOUND));
+                                       sizeof(NOT_FOUND)-1);
                                 
-                                current->pointer += sizeof(NOT_FOUND);
-                                memcpy(current->buffer+current->pointer, " \r\n", 3);
-                                current->pointer += 5;
+                                current->pointer += sizeof(NOT_FOUND)-1;
                             }
                             
                         } else {	// 	request is not get
                             memcpy(current->buffer+current->pointer,
                                    BAD_REQUEST,
-                                   sizeof(BAD_REQUEST));
+                                   sizeof(BAD_REQUEST)-1);
                             
-                            current->pointer += sizeof(BAD_REQUEST);
-                            memcpy(current->buffer+current->pointer, " \r\n", 3);
-                            current->pointer += 5;
+                            current->pointer += sizeof(BAD_REQUEST)-1;
                         }
                         current->pending_data = 1;
                         printf("current pointer is at a %d\n", current->pointer);
@@ -414,6 +414,26 @@ int main(int argc, char **argv) {
 
                         
                     } else { // non WWW MODE
+                        /* we have data from a client */
+                        count = recv(current->socket, current->buffer+current->pointer, BUF_LEN, 0);
+                        
+                        if (count <= 0) {
+                            if (errno == EAGAIN) {
+                                // No-op
+                            } else {
+                                /* something is wrong */
+                                if (count == 0) {
+                                    printf("Client closed connection. Client IP address is: %s\n", inet_ntoa(current->client_addr.sin_addr));
+                                } else {
+                                    perror("error receiving from a client");
+                                }
+                                
+                                /* connection is closed, clean up */
+                                close(current->socket);
+                                dump(&head, current->socket);
+                            }
+                            continue;
+                        }
                         memcpy(&msg_size, current->buffer, 2);
                         current->pointer += count;
                         if(current->pointer == msg_size) {
