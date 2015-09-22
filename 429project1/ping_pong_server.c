@@ -86,6 +86,12 @@ int main(int argc, char **argv) {
     struct sockaddr_in sin, addr;
     unsigned short server_port = atoi(argv[1]);
     
+    /* check if we are in www mode */
+    int www_mode = 0;
+    if (argv[2] != NULL && strncmp(argv[2], "www", 3) == 0) {
+        www_mode = 1;
+    }
+    
     /* socket address variables for a connected client */
     socklen_t addr_len = sizeof(struct sockaddr_in);
     
