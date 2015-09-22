@@ -257,11 +257,7 @@ int main(int argc, char **argv) {
                      sending whatever is in the buffer buf
                      */
                     if (www_mode) {
-                        printf("current pointer is at %d\n", current->pointer);
-
-                        count = send(current->socket,
-                                     current->buffer+current->pointer,
-                                     strlen(current->buffer)-current->pointer, MSG_DONTWAIT);
+                        count = send(current->socket, current->buffer+current->pointer, BUF_LEN-current->pointer, MSG_DONTWAIT);
                         if (count < 0) {
                             if (errno == EAGAIN) {
                                 // No-op
@@ -272,10 +268,9 @@ int main(int argc, char **argv) {
                             }
                             continue;
                         }
-
+                        
                         current->pointer += count;
-                        if(current->buffer + current->pointer == 0
-                           || current->pointer == strlen(current->buffer)) {	// end of file or end of buffer
+                        if(current->buffer + current->pointer == 0) {	// end of file
                             current->pointer = 0;
                             current-> pending_data = 0;
                         }
@@ -346,17 +341,18 @@ int main(int argc, char **argv) {
 
                             char *http_begin = http_version;
                             while (*http_version != '\r') {
+                                printf("after http_version.... %s\n", http_version);
                                 http_version++;
                             }
+                            printf("after http_version %s\n", http_version);
 
                             /* add http version */
                             memcpy(current->buffer, http_begin, http_version-http_begin);
                             current->pointer += http_version-http_begin;
-                            printf("CURRENT BUFFER AFTER HTTP VERSION %s", current->buffer);
                             memcpy(current->buffer + current->pointer, " ", 1);
                             current->pointer++;
                             
-                            printf("CURRENT BUFFER AFTER HTTP VERSION %s", current->buffer);
+                            printf("CURRENT BUFFER AFTER HTTP VERSION %s\n", current->buffer);
 
                             /* check if the file exists */
                             if (access(filepath, F_OK) != -1) {
@@ -384,7 +380,7 @@ int main(int argc, char **argv) {
                                            sizeof(NOT_IMPLEMENTED));
                                     
                                     current->pointer += sizeof(NOT_IMPLEMENTED);
-                                    memcpy(current->buffer+current->pointer, " \r\n", 3);
+                                    memcpy(current->buffer+current->pointer, " \r\n", 5);
                                     current->pointer += 5;
                                 }
                                 
@@ -394,7 +390,7 @@ int main(int argc, char **argv) {
                                        sizeof(NOT_FOUND));
                                 
                                 current->pointer += sizeof(NOT_FOUND);
-                                memcpy(current->buffer+current->pointer, " \r\n", 3);
+                                memcpy(current->buffer+current->pointer, " \r\n", 5);
                                 current->pointer += 5;
                             }
                             
@@ -404,14 +400,11 @@ int main(int argc, char **argv) {
                                    sizeof(BAD_REQUEST));
                             
                             current->pointer += sizeof(BAD_REQUEST);
-                            memcpy(current->buffer+current->pointer, " \r\n", 3);
+                            memcpy(current->buffer+current->pointer, " \r\n", 5);
                             current->pointer += 5;
                         }
                         current->pending_data = 1;
-                        printf("current pointer is at a %d\n", current->pointer);
                         current->pointer = 0;
-                        printf("current pointer is at b %d\n", current->pointer);
-
                         
                     } else { // non WWW MODE
                         memcpy(&msg_size, current->buffer, 2);

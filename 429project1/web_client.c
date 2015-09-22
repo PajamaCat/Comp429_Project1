@@ -86,8 +86,11 @@ int main(int argc, char** argv) {
         
         printf("Enter the HTTP Request: ");
         fgets(sendbuffer, BUF_LEN, stdin);
+    
+        printf("buffer %s \n", sendbuffer);
 
-        if (strcmp(sendbuffer, "bye") == 0) {
+        if (strncmp(sendbuffer, "bye", 3) == 0) {
+            printf("here?\n");
             break;
         }
         
@@ -105,6 +108,8 @@ int main(int argc, char** argv) {
         count = recv(sock, buffer, BUF_LEN, 0);
         
         printf("%s\n", buffer);
+        
+
     }
     
     printf("Web browser finished!\n");
