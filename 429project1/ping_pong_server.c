@@ -336,7 +336,7 @@ int main(int argc, char **argv) {
                             char filepath[separator-path_begin];
                             memcpy(filepath, path_begin, separator-path_begin);
                             
-                            char *http_version = strpbrk(current->buffer, "HTTP");
+                            char *http_version = strstr(current->buffer, "HTTP");
                             printf("miao %s\n", http_version);
 
                             char *http_begin = http_version;
