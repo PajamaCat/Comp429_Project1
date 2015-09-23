@@ -24,6 +24,33 @@
  and the server port number */
 #define BUF_LEN 65535
 
+int recv_all(int socket, int msg_size, char *buffer)
+{
+    int recv_msg_size = 0;
+    ssize_t recv_bytes = 0;
+    int remaining_bytes = msg_size;
+    
+    while (recv_msg_size < msg_size) {
+        recv_bytes = recv(socket, buffer + recv_msg_size, remaining_bytes, 0);
+        if (recv_bytes < 0) {
+            if (errno == EAGAIN) {
+                continue;
+            }
+            perror("recv failure");
+            abort();
+        }
+        
+        if (recv_bytes == 0)
+            break;
+        
+        recv_msg_size += recv_bytes;
+        remaining_bytes -= recv_bytes;
+        
+    }
+    
+    return recv_msg_size;
+}
+
 int main(int argc, char** argv) {
     
     /* our client socket */
@@ -82,36 +109,26 @@ int main(int argc, char** argv) {
     }
     
     /* Set timestamp and send/receive messages */
-    while (1) {
         
-        printf("Enter the HTTP Request: ");
-        fgets(sendbuffer, BUF_LEN, stdin);
+    printf("Enter the HTTP Request: ");
+    fgets(sendbuffer, BUF_LEN, stdin);
     
-        printf("buffer %s \n", sendbuffer);
-
-        if (strncmp(sendbuffer, "bye", 3) == 0) {
-            printf("here?\n");
-            break;
-        }
-        
-        memcpy(sendbuffer + strlen(sendbuffer) - 1, "\r\n\r\n", 4);
-        printf("buffer len %lu \n", strlen(sendbuffer));
-        int a = sendbuffer[strlen(sendbuffer)-2] == '\r';
-        int b = sendbuffer[strlen(sendbuffer)-1] == '\n';
-        printf("%d\n", a);
-        printf("%d\n", b);
-        /* send all messages */
-        count = send(sock, sendbuffer, strlen(sendbuffer), 0);
-        
-        
-        /* receive all messages */
-        count = recv(sock, buffer, BUF_LEN, 0);
-        
-        printf("%s\n", buffer);
-        
-
+    printf("buffer %s \n", sendbuffer);
+    
+    if (strncmp(sendbuffer, "bye", 3) == 0) {
+        return 0;
     }
     
+    memcpy(sendbuffer + strlen(sendbuffer) - 1, "\r\n\r\n", 4);
+    /* send all messages */
+    count = send(sock, sendbuffer, strlen(sendbuffer), 0);
+    
+    /* receive all messages */
+    count = recv_all(sock, BUF_LEN, buffer);
+    
+    printf("%s", buffer);
+    
+
     printf("Web browser finished!\n");
     
     close(sock);
