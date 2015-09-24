@@ -19,11 +19,19 @@
 #include <sys/stat.h>
 
 #define BUF_LEN 65535
-#define OK	"200 OK\r\n"
-#define CONTENT_TYPE "Content-Type: text/html\r\n"
-#define NOT_IMPLEMENTED "501 Not Implemented\r\n"
-#define NOT_FOUND "404 Not Found\r\n"
-#define BAD_REQUEST "400 Bad Request\r\n"
+#define OK	"OK"
+#define CONTENT_TYPE "Content-Type: text/html\r\n\r\n"
+#define NOT_IMPLEMENTED "Not Implemented"
+#define NOT_FOUND "Not Found"
+#define BAD_REQUEST "Bad Request"
+
+enum code {
+    ok, not_implemented, not_found, bad_request,
+};
+
+static const char *CODE_STR[] = {
+    OK, NOT_IMPLEMENTED, NOT_FOUND, BAD_REQUEST
+};
 /**************************************************/
 /* a few simple linked list functions             */
 /**************************************************/
@@ -98,6 +106,54 @@ void read_file(struct node *current, long available_space) {
     }
 }
 
+void error_code(struct node *current, enum code op, int error_num) {
+    /* unsupported file type */
+    
+    char *buffer_start = current->buffer+current->pointer;
+
+    memset(buffer_start, 0, BUF_LEN);
+    printf("buffer start %s\n", buffer_start);
+
+    printf("a\n");
+
+    
+    char num[4];
+    sprintf(num, "%d", error_num);
+    num[3] = '\0';
+    printf("b\n");
+
+    
+    char error_msg[100];
+    //memcpy(error_msg, num, 3);
+    strcat(error_msg, num);
+    printf("c.1 %s\n", error_msg);
+
+    strcat(error_msg, " ");
+    printf("c.2\n");
+
+    strcat(error_msg, CODE_STR[op]);
+    
+    printf("c\n");
+
+    
+    strcat(buffer_start, error_msg);
+    strcat(buffer_start, "\r\n");
+    
+    strcat(buffer_start, CONTENT_TYPE);
+
+    strcat(buffer_start, "<html><head>\r\n<title>");
+    
+    strcat(buffer_start, error_msg);
+    strcat(buffer_start, "</title>\r\n</head><body>\r\n<h1>");
+    strcat(buffer_start, CODE_STR[op]);
+    strcat(buffer_start, "</h1>\r\n</body></html>\r\n");
+    printf("d\n");
+	
+    memset(num, 0, 4);
+    memset(error_msg, 0, 100);
+
+}
+
 /*****************************************/
 /* main program                          */
 /*****************************************/
@@ -117,6 +173,22 @@ int main(int argc, char **argv) {
     int www_mode = 0;
     if (argv[2] != NULL && strncmp(argv[2], "www", 3) == 0) {
         www_mode = 1;
+    }
+    
+    /* root directory */
+    char *root_dir = NULL;
+    if (www_mode) {
+        if (argv[3] != NULL) {
+            if (strstr(argv[3], "../") == NULL) {
+                root_dir = argv[3];
+            } else {
+                perror("Root directory cannot contain ../\n");
+                abort();
+            }
+        } else {
+            perror("www_mode must contain a root directory\n");
+            abort();
+        }
     }
     
     /* socket address variables for a connected client */
@@ -299,6 +371,7 @@ int main(int argc, char **argv) {
                         }
                         
                         printf("REMAINING FILE_SIZE %lu\n", current->remaining_file_size);
+                        printf("CONTENT IS %s\n", current->buffer);
                         /* if there's no pending file to read, close connection. otherwise do nothing */
                         if (current->remaining_file_size == 0L) {
                             printf("Close connection with client. Client IP address is: %s\n", inet_ntoa(current->client_addr.sin_addr));
@@ -365,20 +438,21 @@ int main(int argc, char **argv) {
                             
                             if (strncmp(current->buffer, "GET", 3) == 0) {
                                 printf("PASSED GET\n");
-                                char *separator = strpbrk(current->buffer + 3, "/");
-                                char *path_begin = separator;
-                                while (*separator != ' ') {
-                                    separator++;
-                                }
                                 
-                                /* get file path */
-                                char filepath[separator-path_begin+1];
-                                memcpy(filepath, path_begin, separator-path_begin);
-                                filepath[separator-path_begin] = 0;
-                                
+                                /* check if http version exists */
                                 char *http_version = strstr(current->buffer, "HTTP");
-                                
-                                if (http_version != NULL && strstr(filepath, "../") == NULL) {
+                                if (http_version != NULL) {
+                                    char *separator = strpbrk(current->buffer + 3, "/");
+                                    char *path_begin = separator;
+                                    while (*separator != ' ') {
+                                        separator++;
+                                    }
+                                    
+                                    /* get file path */
+                                    char filepath[separator-path_begin+1];
+                                    memcpy(filepath, path_begin, separator-path_begin);
+                                    filepath[separator-path_begin] = 0;
+                                    
                                     char *http_begin = http_version;
                                     while (*http_version != '\r') {
                                         http_version++;
@@ -388,15 +462,26 @@ int main(int argc, char **argv) {
                                     memcpy(current->buffer, http_begin, http_version-http_begin);
                                     current->pointer += http_version-http_begin;
                                     memcpy(current->buffer + current->pointer, " ", 1);
+                                    printf("buffer after passed %s\n", current->buffer);
+
                                     current->pointer++;
                                     
-                                    printf("%d\n", access(filepath, F_OK));
+                                    strcat(root_dir, filepath);
+                                    
+                                    printf("%d\n", access(root_dir, F_OK));
                                     /* check if the file exists */
-                                    if (access(filepath, F_OK) != -1) {
-                                        printf("PASSED filecheck\n");
-                                        if (strstr(filepath, ".html") != NULL || strstr(filepath, ".txt") != NULL) {
+                                    if (access(root_dir, F_OK) != -1) {
+                                        printf("PASSED filecheck %s\n", root_dir);
+                                        if (strstr(root_dir, ".html") != NULL || strstr(root_dir, ".txt") != NULL) {
+                                            memcpy(current->buffer+current->pointer, "200 ", 4);
+											current->pointer += 4;
+                                            
                                             memcpy(current->buffer+current->pointer, OK, sizeof(OK)-1);
                                             current->pointer += sizeof(OK)-1;
+                                            
+                                            memcpy(current->buffer+current->pointer, "\r\n", 2);
+                                            current->pointer += 2;
+                                            
                                             printf("size of OK %lu\n", sizeof(OK));
                                             memcpy(current->buffer+current->pointer,
                                                    CONTENT_TYPE,
@@ -404,9 +489,9 @@ int main(int argc, char **argv) {
                                             current->pointer += sizeof(CONTENT_TYPE)-1;
                                             
                                             /* read file */
-                                            current->fp = fopen(filepath, "r");
+                                            current->fp = fopen(root_dir, "r");
                                             struct stat st;
-                                            stat(filepath, &st);
+                                            stat(root_dir, &st);
                                             
                                             current->remaining_file_size = st.st_size;
                                             long remaining_buffer_size = BUF_LEN - strlen(current->buffer);
@@ -418,38 +503,62 @@ int main(int argc, char **argv) {
                                             
                                         } else {
                                             /* unsupported file type */
-                                            memset(current->buffer+current->pointer, 0, sizeof(NOT_IMPLEMENTED));
+                                            memset(current->buffer+current->pointer, 0, sizeof(NOT_IMPLEMENTED)+ sizeof(CONTENT_TYPE));
                                             memcpy(current->buffer+current->pointer,
                                                    NOT_IMPLEMENTED,
                                                    sizeof(NOT_IMPLEMENTED)-1);
                                             current->pointer += sizeof(NOT_IMPLEMENTED)-1;
+                                            memcpy(current->buffer+current->pointer,
+                                                   CONTENT_TYPE,
+                                                   sizeof(CONTENT_TYPE)-1);
+                                            current->pointer += sizeof(CONTENT_TYPE)-1;
                                             current->buffer[strlen(current->buffer)] = 0;
                                         }
                                         
                                     } else {	// file does not exist
-                                        memset(current->buffer+current->pointer, 0, sizeof(NOT_FOUND));
-                                        memcpy(current->buffer+current->pointer,
-                                               NOT_FOUND,
-                                               sizeof(NOT_FOUND)-1);
-                                        current->pointer += sizeof(NOT_FOUND)-1;
-                                        current->buffer[strlen(current->buffer)] = 0;
+//                                        memset(current->buffer+current->pointer, 0, sizeof(NOT_FOUND));
+//                                        memcpy(current->buffer+current->pointer,
+//                                               NOT_FOUND,
+//                                               sizeof(NOT_FOUND)-1);
+//                                        current->pointer += sizeof(NOT_FOUND)-1;
+//                                        
+//                                        memcpy(current->buffer+current->pointer,
+//                                               CONTENT_TYPE,
+//                                               sizeof(CONTENT_TYPE)-1);
+//                                        current->pointer += sizeof(CONTENT_TYPE)-1;
+//                                        current->buffer[strlen(current->buffer)] = 0;
+                                        enum code op = not_found;
+                                        printf("op %d\n", op);
+                                        error_code(current, op, 404);
                                     }
-                                } else {	// 	request does not contain http version
-                                    memset(current->buffer+current->pointer, 0, sizeof(BAD_REQUEST));
+
+                                
+                                } else {
+                                    memset(current->buffer+current->pointer, 0, sizeof(BAD_REQUEST)+ sizeof(CONTENT_TYPE));
                                     memcpy(current->buffer+current->pointer,
                                            BAD_REQUEST,
                                            sizeof(BAD_REQUEST)-1);
                                     
                                     current->pointer += sizeof(BAD_REQUEST)-1;
+                                    
+                                    memcpy(current->buffer+current->pointer,
+                                           CONTENT_TYPE,
+                                           sizeof(CONTENT_TYPE)-1);
+                                    current->pointer += sizeof(CONTENT_TYPE)-1;
                                     current->buffer[strlen(current->buffer)] = 0;
                                 }
-                                
+                            
                             } else {	// 	request is not get
-                                memset(current->buffer+current->pointer, 0, sizeof(BAD_REQUEST));
+                                memset(current->buffer+current->pointer, 0, sizeof(BAD_REQUEST) + sizeof(CONTENT_TYPE));
                                 memcpy(current->buffer+current->pointer,
                                        BAD_REQUEST,
                                        sizeof(BAD_REQUEST)-1);
                                 current->pointer += sizeof(BAD_REQUEST)-1;
+                                
+                                memcpy(current->buffer+current->pointer,
+                                       CONTENT_TYPE,
+                                       sizeof(CONTENT_TYPE)-1);
+                                current->pointer += sizeof(CONTENT_TYPE)-1;
                                 current->buffer[strlen(current->buffer)] = 0;
                             }
                         }
