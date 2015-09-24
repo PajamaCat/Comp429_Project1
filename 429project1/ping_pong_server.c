@@ -24,6 +24,10 @@
 #define NOT_IMPLEMENTED "Not Implemented"
 #define NOT_FOUND "Not Found"
 #define BAD_REQUEST "Bad Request"
+#define OK_CODE 200
+#define NI_CODE 501
+#define NF_CODE 404
+#define BR_CODE 400
 
 enum code {
     ok, not_implemented, not_found, bad_request,
@@ -65,6 +69,7 @@ void dump(struct node *head, int socket) {
             /* remove */
             temp = current->next;
             current->next = temp->next;
+            memset(current->buffer, 0, BUF_LEN);
             free(temp); /* don't forget to free memory */
             return;
         } else {
@@ -106,7 +111,7 @@ void read_file(struct node *current, long available_space) {
     }
 }
 
-void error_code(struct node *current, enum code op, int error_num) {
+void error_code(struct node *current, enum code op, int error_num, char *filepath) {
     /* unsupported file type */
     
     char *buffer_start = current->buffer+current->pointer;
@@ -124,6 +129,7 @@ void error_code(struct node *current, enum code op, int error_num) {
 
     
     char error_msg[100];
+    memset(error_msg, 0, 100);
     //memcpy(error_msg, num, 3);
     strcat(error_msg, num);
     printf("c.1 %s\n", error_msg);
@@ -146,7 +152,20 @@ void error_code(struct node *current, enum code op, int error_num) {
     strcat(buffer_start, error_msg);
     strcat(buffer_start, "</title>\r\n</head><body>\r\n<h1>");
     strcat(buffer_start, CODE_STR[op]);
-    strcat(buffer_start, "</h1>\r\n</body></html>\r\n");
+    strcat(buffer_start, "</h1>\r\n");
+    
+    if (filepath != NULL) {
+        strcat(buffer_start, "<p>The requested file ");
+        strcat(buffer_start, filepath);
+        if (error_num == 404) {
+            strcat(buffer_start, " was not found on this server.</p>\r\n<hr>\r\n");
+        } else {
+            strcat(buffer_start, " was not supported by the server.</p>\r\n<hr>\r\n");
+        }
+    }
+    
+    strcat(buffer_start, "</body></html>\r\n");
+    
     printf("d\n");
 	
     memset(num, 0, 4);
@@ -466,13 +485,18 @@ int main(int argc, char **argv) {
 
                                     current->pointer++;
                                     
-                                    strcat(root_dir, filepath);
-                                    
-                                    printf("%d\n", access(root_dir, F_OK));
+                                    char full_file_path[strlen(root_dir) + strlen(filepath) + 1];
+                                    memcpy(full_file_path, root_dir, strlen(root_dir));
+                                    memcpy(full_file_path + strlen(root_dir), filepath, strlen(filepath));
+                                    full_file_path[strlen(root_dir) + strlen(filepath)] = 0;
+
+                                    printf("before filecheck %s\n", full_file_path);
+
+                                    printf("%d\n", access(full_file_path, F_OK));
                                     /* check if the file exists */
-                                    if (access(root_dir, F_OK) != -1) {
-                                        printf("PASSED filecheck %s\n", root_dir);
-                                        if (strstr(root_dir, ".html") != NULL || strstr(root_dir, ".txt") != NULL) {
+                                    if (access(full_file_path, F_OK) != -1) {
+                                        printf("PASSED filecheck %s\n", full_file_path);
+                                        if (strstr(full_file_path, ".html") != NULL || strstr(full_file_path, ".txt") != NULL) {
                                             memcpy(current->buffer+current->pointer, "200 ", 4);
 											current->pointer += 4;
                                             
@@ -489,9 +513,9 @@ int main(int argc, char **argv) {
                                             current->pointer += sizeof(CONTENT_TYPE)-1;
                                             
                                             /* read file */
-                                            current->fp = fopen(root_dir, "r");
+                                            current->fp = fopen(full_file_path, "r");
                                             struct stat st;
-                                            stat(root_dir, &st);
+                                            stat(full_file_path, &st);
                                             
                                             current->remaining_file_size = st.st_size;
                                             long remaining_buffer_size = BUF_LEN - strlen(current->buffer);
@@ -503,63 +527,23 @@ int main(int argc, char **argv) {
                                             
                                         } else {
                                             /* unsupported file type */
-                                            memset(current->buffer+current->pointer, 0, sizeof(NOT_IMPLEMENTED)+ sizeof(CONTENT_TYPE));
-                                            memcpy(current->buffer+current->pointer,
-                                                   NOT_IMPLEMENTED,
-                                                   sizeof(NOT_IMPLEMENTED)-1);
-                                            current->pointer += sizeof(NOT_IMPLEMENTED)-1;
-                                            memcpy(current->buffer+current->pointer,
-                                                   CONTENT_TYPE,
-                                                   sizeof(CONTENT_TYPE)-1);
-                                            current->pointer += sizeof(CONTENT_TYPE)-1;
-                                            current->buffer[strlen(current->buffer)] = 0;
+                                            enum code op = not_implemented;
+                                            error_code(current, op, NI_CODE, full_file_path);
                                         }
                                         
                                     } else {	// file does not exist
-//                                        memset(current->buffer+current->pointer, 0, sizeof(NOT_FOUND));
-//                                        memcpy(current->buffer+current->pointer,
-//                                               NOT_FOUND,
-//                                               sizeof(NOT_FOUND)-1);
-//                                        current->pointer += sizeof(NOT_FOUND)-1;
-//                                        
-//                                        memcpy(current->buffer+current->pointer,
-//                                               CONTENT_TYPE,
-//                                               sizeof(CONTENT_TYPE)-1);
-//                                        current->pointer += sizeof(CONTENT_TYPE)-1;
-//                                        current->buffer[strlen(current->buffer)] = 0;
                                         enum code op = not_found;
                                         printf("op %d\n", op);
-                                        error_code(current, op, 404);
+                                        error_code(current, op, NF_CODE, full_file_path);
                                     }
-
-                                
                                 } else {
-                                    memset(current->buffer+current->pointer, 0, sizeof(BAD_REQUEST)+ sizeof(CONTENT_TYPE));
-                                    memcpy(current->buffer+current->pointer,
-                                           BAD_REQUEST,
-                                           sizeof(BAD_REQUEST)-1);
-                                    
-                                    current->pointer += sizeof(BAD_REQUEST)-1;
-                                    
-                                    memcpy(current->buffer+current->pointer,
-                                           CONTENT_TYPE,
-                                           sizeof(CONTENT_TYPE)-1);
-                                    current->pointer += sizeof(CONTENT_TYPE)-1;
-                                    current->buffer[strlen(current->buffer)] = 0;
+                                    enum code op = bad_request;
+                                    error_code(current, op, BR_CODE, NULL);
                                 }
                             
                             } else {	// 	request is not get
-                                memset(current->buffer+current->pointer, 0, sizeof(BAD_REQUEST) + sizeof(CONTENT_TYPE));
-                                memcpy(current->buffer+current->pointer,
-                                       BAD_REQUEST,
-                                       sizeof(BAD_REQUEST)-1);
-                                current->pointer += sizeof(BAD_REQUEST)-1;
-                                
-                                memcpy(current->buffer+current->pointer,
-                                       CONTENT_TYPE,
-                                       sizeof(CONTENT_TYPE)-1);
-                                current->pointer += sizeof(CONTENT_TYPE)-1;
-                                current->buffer[strlen(current->buffer)] = 0;
+                                enum code op = not_implemented;
+                                error_code(current, op, NI_CODE, NULL);
                             }
                         }
                         current->pending_data = 1;
