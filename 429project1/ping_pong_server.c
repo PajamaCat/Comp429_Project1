@@ -461,82 +461,91 @@ int main(int argc, char **argv) {
                                 /* check if http version exists */
                                 char *http_version = strstr(current->buffer, "HTTP");
                                 if (http_version != NULL) {
+                                    
+                                    /* get file path */
                                     char *separator = strpbrk(current->buffer + 3, "/");
                                     char *path_begin = separator;
                                     while (*separator != ' ') {
                                         separator++;
                                     }
                                     
-                                    /* get file path */
                                     char filepath[separator-path_begin+1];
                                     memcpy(filepath, path_begin, separator-path_begin);
                                     filepath[separator-path_begin] = 0;
                                     
+                                    /* add http version */
                                     char *http_begin = http_version;
                                     while (*http_version != '\r') {
                                         http_version++;
                                     }
                                     
-                                    /* add http version */
                                     memcpy(current->buffer, http_begin, http_version-http_begin);
                                     current->pointer += http_version-http_begin;
                                     memcpy(current->buffer + current->pointer, " ", 1);
                                     printf("buffer after passed %s\n", current->buffer);
-
-                                    current->pointer++;
                                     
-                                    char full_file_path[strlen(root_dir) + strlen(filepath) + 1];
-                                    memcpy(full_file_path, root_dir, strlen(root_dir));
-                                    memcpy(full_file_path + strlen(root_dir), filepath, strlen(filepath));
-                                    full_file_path[strlen(root_dir) + strlen(filepath)] = 0;
+                                    current->pointer++;
 
-                                    printf("before filecheck %s\n", full_file_path);
-
-                                    printf("%d\n", access(full_file_path, F_OK));
-                                    /* check if the file exists */
-                                    if (access(full_file_path, F_OK) != -1) {
-                                        printf("PASSED filecheck %s\n", full_file_path);
-                                        if (strstr(full_file_path, ".html") != NULL || strstr(full_file_path, ".txt") != NULL) {
-                                            memcpy(current->buffer+current->pointer, "200 ", 4);
-											current->pointer += 4;
-                                            
-                                            memcpy(current->buffer+current->pointer, OK, sizeof(OK)-1);
-                                            current->pointer += sizeof(OK)-1;
-                                            
-                                            memcpy(current->buffer+current->pointer, "\r\n", 2);
-                                            current->pointer += 2;
-                                            
-                                            printf("size of OK %lu\n", sizeof(OK));
-                                            memcpy(current->buffer+current->pointer,
-                                                   CONTENT_TYPE,
-                                                   sizeof(CONTENT_TYPE)-1);
-                                            current->pointer += sizeof(CONTENT_TYPE)-1;
-                                            
-                                            /* read file */
-                                            current->fp = fopen(full_file_path, "r");
-                                            struct stat st;
-                                            stat(full_file_path, &st);
-                                            
-                                            current->remaining_file_size = st.st_size;
-                                            long remaining_buffer_size = BUF_LEN - strlen(current->buffer);
-                                            
-                                            printf("remaining %lu?\n", remaining_buffer_size);
-                                            printf("filesize %lu\n", current->remaining_file_size);
-                                            read_file(current, remaining_buffer_size);
-                                            printf("After read file %lu\n", strlen(current->buffer));
-                                            
-                                        } else {
-                                            /* unsupported file type */
-                                            enum code op = not_implemented;
-                                            error_code(current, op, NI_CODE, full_file_path);
-                                        }
+                                    
+                                    if (strstr(filepath, "../") == NULL) {
+                                        char full_file_path[strlen(root_dir) + strlen(filepath) + 1];
+                                        memcpy(full_file_path, root_dir, strlen(root_dir));
+                                        memcpy(full_file_path + strlen(root_dir), filepath, strlen(filepath));
+                                        full_file_path[strlen(root_dir) + strlen(filepath)] = 0;
                                         
-                                    } else {	// file does not exist
-                                        enum code op = not_found;
-                                        printf("op %d\n", op);
-                                        error_code(current, op, NF_CODE, full_file_path);
+                                        printf("before filecheck %s\n", full_file_path);
+                                        
+                                        printf("%d\n", access(full_file_path, F_OK));
+                                        /* check if the file exists */
+                                        if (access(full_file_path, F_OK) != -1) {
+                                            printf("PASSED filecheck %s\n", full_file_path);
+                                            if (strstr(full_file_path, ".html") != NULL || strstr(full_file_path, ".txt") != NULL) {
+                                                memcpy(current->buffer+current->pointer, "200 ", 4);
+                                                current->pointer += 4;
+                                                
+                                                memcpy(current->buffer+current->pointer, OK, sizeof(OK)-1);
+                                                current->pointer += sizeof(OK)-1;
+                                                
+                                                memcpy(current->buffer+current->pointer, "\r\n", 2);
+                                                current->pointer += 2;
+                                                
+                                                printf("size of OK %lu\n", sizeof(OK));
+                                                memcpy(current->buffer+current->pointer,
+                                                       CONTENT_TYPE,
+                                                       sizeof(CONTENT_TYPE)-1);
+                                                current->pointer += sizeof(CONTENT_TYPE)-1;
+                                                
+                                                /* read file */
+                                                current->fp = fopen(full_file_path, "r");
+                                                struct stat st;
+                                                stat(full_file_path, &st);
+                                                
+                                                current->remaining_file_size = st.st_size;
+                                                long remaining_buffer_size = BUF_LEN - strlen(current->buffer);
+                                                
+                                                printf("remaining %lu?\n", remaining_buffer_size);
+                                                printf("filesize %lu\n", current->remaining_file_size);
+                                                read_file(current, remaining_buffer_size);
+                                                printf("After read file %lu\n", strlen(current->buffer));
+                                                
+                                            } else {
+                                                /* unsupported file type */
+                                                enum code op = not_implemented;
+                                                error_code(current, op, NI_CODE, full_file_path);
+                                            }
+                                            
+                                        } else {	// file does not exist
+                                            enum code op = not_found;
+                                            printf("op %d\n", op);
+                                            error_code(current, op, NF_CODE, full_file_path);
+                                        }
+
+                                    } else {
+                                        enum code op = bad_request;
+                                        error_code(current, op, BR_CODE, NULL);
                                     }
-                                } else {
+
+                                } else {	// no http version
                                     enum code op = bad_request;
                                     error_code(current, op, BR_CODE, NULL);
                                 }
